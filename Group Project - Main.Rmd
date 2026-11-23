@@ -66,10 +66,338 @@ Ana's Personal Work and Testing Grounds
 
 ```
 Christine's Personal Work and Testing Grounds
-```
-```{r}
+---
+title: "FML GROUP HOTEL BOOKING EXPLORATION"
+author: "Christine Donovan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+## Data Source and Description
 
+**Dataset:** Hotel Booking Demand
+
+**Description:** Booking records from two hotels in Portugal, a resort hotel
+in the Algarve and a city hotel in Lisbon, for arrivals between July 1, 2015
+and August 31, 2017. Each row is one booking. The file has 119,390 rows and
+32 columns, with details such as lead time, length of stay, number of guests,
+market segment, deposit type and average daily rate. The target variable is
+`is_canceled` (1 = the booking was canceled, 0 = it was not).
+
+**Progject Goal:** Using only what is known when a booking is made, can we predict whether the guest will fail to stay, either by cancelling or by not showing up?
+
+**Original source:** Antonio, N., de Almeida, A., & Nunes, L. (2019). Hotel
+booking demand datasets. *Data in Brief, 22*, 41–49.
+https://doi.org/10.1016/j.dib.2018.11.126
+
+**Obtained from:** TidyTuesday (R for Data Science community), release of
+February 11, 2020.
+https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-02-11
+Accessed November 13, 2026.
+
+**How this copy was prepared:** TidyTuesday combined the article's two hotel
+files into one, standardized the column names and added the `hotel` column.
+Our own cleaning steps are documented in the sections below.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 ```
+## Step 1. Load dataset Hotels.csv and evaluate
+```{r}
+hotels <- read.csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv")
+dim(hotels)
+str(hotels)
+table(hotels$is_canceled)
+```
+
+## Step 2. Defining question & remove leakage
+
+At the moment a booking is made, can we predict whether it will be cancelled?
+The two parts of it:  “At the moment a booking is made” sets the time of the prediction. It is the reason the columns filled in later have to be removed: the final status, its date, the assigned room and the count of booking changes. “Whether it will be cancelled” is the target, "is_canceled."
+
+```{r}
+table(hotels$reservation_status, hotels$is_canceled)
+```
+The 44,224 are 43,017 cancellations plus 1,207 no-shows, so the target means “did not stay”
+
+```{r}
+hotels_clean <- subset(hotels, select = -c(reservation_status,
+                                           reservation_status_date,
+                                           assigned_room_type,
+                                           booking_changes))
+dim(hotels_clean)
+```
+### Leakage columns removed
+
+| Column                    | What it holds                              | Why it leaks                                      |
+|---------------------------|--------------------------------------------|---------------------------------------------------|
+| `reservation_status`      | Final status: Canceled, Check-Out, No-Show | It is the outcome under another name              |
+| `reservation_status_date` | Date the final status was set              | Exists only after the outcome has happened        |
+| `assigned_room_type`      | Room type actually given to the guest      | Set at or near check-in, after the booking is made |
+| `booking_changes`         | Changes/amendments made to the booking     | Counts changes made after booking; not known at the time of booking |
+
+
+
+```{r}
+table(hotels$deposit_type, hotels$reservation_status)
+```
+
+## Test 1: are no-deposit bookings made at the last minute?
+```{r}
+tapply(hotels$lead_time, hotels$deposit_type, summary)
+```
+## Test 2: are non-refundable bookings made online?
+```{r}
+table(hotels$deposit_type, hotels$market_segment)
+```
+
+
+
+## Step 3a:  Count missing items: 
+
+The first counts true missing values in each column, and the second counts cells holding the text "NULL".
+
+```{r}
+colSums(is.na(hotels_clean))
+colSums(hotels_clean == "NULL", na.rm = TRUE)
+```
+## Step 3b: Fix the missing values
+```{r}
+length(unique(hotels_clean$agent))
+length(unique(hotels_clean$company))
+```
+This counts the distinct values in each column. Found: 334 and 353 distinct values. Neither model can make good use of a category with hundreds of levels: k-NN would need hundreds of extra columns, and naive Bayes would have very few bookings per code to learn from..
+
+## The Fix
+```{r}
+# 1. children: replace the 4 missing values with 0
+hotels_clean$children[is.na(hotels_clean$children)] <- 0
+
+# 2. country: label the unknowns
+hotels_clean$country[hotels_clean$country == "NULL"] <- "Unknown"
+
+# 3. agent and company: turn into yes/no flags, then drop the originals
+hotels_clean$used_agent   <- ifelse(hotels_clean$agent == "NULL", 0, 1)
+hotels_clean$used_company <- ifelse(hotels_clean$company == "NULL", 0, 1)
+hotels_clean <- subset(hotels_clean, select = -c(agent, company))
+```
+The reasoning for each
+**children set to 0.** Only 4 rows are affected, and the great majority of bookings have no children, so 0 is the most likely true value. Keeping the rows is better than losing four bookings over one blank.
+**country labeled “Unknown”. **The origin was not recorded for 488 bookings. A clear label keeps those rows and is honest about what you don’t know. Whether to use country as a predictor at all is a Step 4 question.
+**agent and company become flags. **The useful information is whether an agent or a company was involved, not which one out of hundreds. ifelse() writes 0 where the value was “NULL” and 1 otherwise. Once the flags exist, the original columns are dropped.
+
+```{r}
+colSums(is.na(hotels_clean))
+table(hotels_clean$used_agent)
+table(hotels_clean$used_company)
+dim(hotels_clean)
+```
+
+```{r}
+names(hotels_clean)
+```
+## 3c: Find records that make no sense
+```{r}
+summary(hotels_clean[, c("adults", "children", "babies", "adr",
+                         "stays_in_weekend_nights", "stays_in_week_nights",
+                         "lead_time")])
+
+sum(hotels_clean$adults + hotels_clean$children + hotels_clean$babies == 0)
+sum(hotels_clean$stays_in_weekend_nights + hotels_clean$stays_in_week_nights == 0)
+sum(hotels_clean$adr < 0)
+```
+What each part does:   **summary(...)** gives the minimum, quartiles, mean and maximum for seven numeric columns. adr is the average daily rate, the price per night.
+**The first sum()** counts bookings where adults, children and babies add up to zero: a reservation for nobody.
+**The second sum()** counts bookings with zero nights in total.
+**The third sum()** counts bookings with a negative room rate.
+Each sum() works because R treats TRUE as 1 and FALSE as 0, so adding up a true/false test counts how many rows passed it.
+
+```{r}
+# 1. The negative price and any very high price
+hotels_clean[hotels_clean$adr < 0 | hotels_clean$adr > 1000,
+             c("hotel", "is_canceled", "adults", "adr",
+               "deposit_type", "market_segment")]
+
+# 2. Bookings with many babies or many adults
+hotels_clean[hotels_clean$babies >= 9 | hotels_clean$adults >= 20,
+             c("hotel", "is_canceled", "adults", "children", "babies",
+               "adr", "market_segment")]
+
+# 3. What happened to the zero-night bookings
+table(hotels_clean$is_canceled[hotels_clean$stays_in_weekend_nights +
+                               hotels_clean$stays_in_week_nights == 0])
+```
+
+
+| Finding           | Rows | Decision | Reason                                   |
+|-------------------|------|----------|------------------------------------------|
+| Negative price    | 1    | Remove   | Impossible                               |
+| Price of 5,400    | 1    | Remove   | Isolated, implausible, distorts scaling  |
+| Zero guests       | 180  | Remove   | Not a booking for anyone                 |
+| 20 or more adults | 12   | Remove   | Zero-price placeholder entries           |
+| 9 or more babies  | 2    | Remove   | Evident entry errors                     |
+| Zero nights       | 715  | Keep     | Completed records, likely daytime use    |
+
+
+That removes 196 rows, about 0.16% of the data. 
+
+
+```{r}
+drop <- hotels_clean$adr < 0 |
+        hotels_clean$adr > 1000 |
+        (hotels_clean$adults + hotels_clean$children + hotels_clean$babies) == 0 |
+        hotels_clean$adults >= 20 |
+        hotels_clean$babies >= 9
+
+sum(drop)
+hotels_clean <- hotels_clean[!drop, ]
+dim(hotels_clean)
+```
+## Step 4a: Take stock of the text columns 
+```{r}
+text_cols <- sapply(hotels_clean, is.character)
+sapply(hotels_clean[text_cols], function(x) length(unique(x)))
+```
+**What each line does**
+**Line 1** tests every column and marks TRUE for the ones stored as text. sapply() applies a function to each column in turn.
+**Line 2** takes only the text columns and, for each one, counts its distinct values. The function(x) length(unique(x)) part is a small function written on the spot: for a column x, count the unique values.
+
+## Step 4b: Choose the predictors
+
+```{r}
+table(hotels_clean$market_segment, hotels_clean$distribution_channel)
+```
+### Proposed removals (5 columns)
+
+| Column                      | Reason to remove                                                        |
+|-----------------------------|-------------------------------------------------------------------------|
+| `country`                   | 178 levels; would create about 178 dummy columns. Nationality may not be confirmed until check-in. |
+| `distribution_channel`      | Overlaps with `market_segment`; adds columns without adding information |
+| `arrival_date_year`         | Future years are not in the data; only reflects three past years        |
+| `arrival_date_week_number`  | Duplicates the seasonal information in the arrival month                |
+| `arrival_date_day_of_month` | No clear reason for day of month to affect cancellation                 |
+
+
+### Predictors kept (22 columns)
+
+| #  | Column                           | Type     | What it holds                                         |
+|----|----------------------------------|----------|-------------------------------------------------------|
+| 1  | `hotel`                          | Category | Resort Hotel or City Hotel                            |
+| 2  | `arrival_date_month`             | Category | Month of arrival                                      |
+| 3  | `meal`                           | Category | Meal package booked                                   |
+| 4  | `market_segment`                 | Category | How the booking was sourced                           |
+| 5  | `reserved_room_type`             | Category | Code of the room type reserved                        |
+| 6  | `deposit_type`                   | Category | No Deposit, Non Refund or Refundable                  |
+| 7  | `customer_type`                  | Category | Type of booking, such as transient, contract or group |
+| 8  | `lead_time`                      | Number   | Days between booking and arrival                      |
+| 9  | `stays_in_weekend_nights`        | Number   | Weekend nights booked                                 |
+| 10 | `stays_in_week_nights`           | Number   | Week nights booked                                    |
+| 11 | `adults`                         | Number   | Number of adults                                      |
+| 12 | `children`                       | Number   | Number of children                                    |
+| 13 | `babies`                         | Number   | Number of babies                                      |
+| 14 | `is_repeated_guest`              | 0/1      | 1 if the guest has stayed before                      |
+| 15 | `previous_cancellations`         | Number   | Earlier bookings this guest cancelled                 |
+| 16 | `previous_bookings_not_canceled` | Number   | Earlier bookings this guest did not cancel            |
+| 17 | `days_in_waiting_list`           | Number   | Days on the waiting list before confirmation          |
+| 18 | `adr`                            | Number   | Average daily rate, in euros                          |
+| 19 | `required_car_parking_spaces`    | Number   | Parking spaces requested                              |
+| 20 | `total_of_special_requests`      | Number   | Number of special requests                            |
+| 21 | `used_agent`                     | 0/1      | 1 if booked through a travel agent (created in Step 3b) |
+| 22 | `used_company`                   | 0/1      | 1 if booked through a company (created in Step 3b)    |
+
+Target: `is_canceled` (1 = the guest did not stay, 0 = the guest stayed).
+
+
+## Step 4b: Remove the 5 columns
+Check
+```{r}
+table(hotels_clean$market_segment, hotels_clean$distribution_channel)
+```
+Remove
+```{r}
+hotels_model <- subset(hotels_clean, select = -c(country, distribution_channel,
+                                                 arrival_date_year,
+                                                 arrival_date_week_number,
+                                                 arrival_date_day_of_month))
+dim(hotels_model)
+names(hotels_model)
+```
+**What each line does**
+
+**subset(..., select = -c(...))** keeps every column except the five listed after the minus sign.
+
+**hotels_model** is a new object for modeling. hotels_clean still holds all 28 columns, so restoring one later is a single edit.
+
+**dim()** reports the size.
+
+**names()** lists the remaining columns so you can confirm the right ones are gone.
+
+## Step 4c: Tell R which columns are categories
+
+**The problem** R currently stores seven category columns as plain text, and the target as the numbers 0 and 1. The models need to know these are categories. R’s name for a category column is a factor.
+
+```{r}
+cat_cols <- c("hotel", "arrival_date_month", "meal", "market_segment",
+              "reserved_room_type", "deposit_type", "customer_type")
+
+hotels_model[cat_cols] <- lapply(hotels_model[cat_cols], factor)
+
+hotels_model$arrival_date_month <- factor(hotels_model$arrival_date_month,
+                                          levels = month.name)
+
+hotels_model$is_canceled <- factor(hotels_clean$is_canceled,
+                                   levels = c(0, 1),
+                                   labels = c("Stayed", "Canceled"))
+
+str(hotels_model)
+table(hotels_model$is_canceled)
+```
+**What each part does**
+
+**cat_cols** is a list of the seven category column names.
+
+**lapply(..., factor) ** converts each of those seven columns to a factor in one step.
+
+**The month line** puts the months in calendar order. Without it, R sorts them alphabetically, starting with April. month.name is R’s built-in list of January to December.
+
+**The target line "is_cancelled"** converts 0 and 1 into the labels “Stayed” and “Canceled,” so confusion matrices will be readable without a key. “Canceled” here includes no-shows, as we defined it.
+
+### The benchmark after cleaning
+75,008 of 119,194 is 62.9%, so the naive rule is still 63%. Removing 196 rows did not shift the balance.
+
+## Step 5: Split the data
+
+### Why split into three sets
+
+| Set        | Share | Used for                                          |
+|------------|-------|---------------------------------------------------|
+| Training   | 60%   | The models learn from these bookings              |
+| Validation | 20%   | Tuning, for example choosing the best k for k-NN  |
+| Test       | 20%   | The final comparison of the two models, used once |
+
+
+## Step 5a: Split Data Code
+
+```{r}
+set.seed(123)
+n <- nrow(hotels_model)
+idx <- sample(n)
+
+n_train <- round(0.6 * n)
+n_valid <- round(0.2 * n)
+
+train <- hotels_model[idx[1:n_train], ]
+valid <- hotels_model[idx[(n_train + 1):(n_train + n_valid)], ]
+test  <- hotels_model[idx[(n_train + n_valid + 1):n], ]
+
+nrow(train); nrow(valid); nrow(test)
+round(prop.table(table(train$is_canceled)), 3)
+round(prop.table(table(valid$is_canceled)), 3)
+round(prop.table(table(test$is_canceled)), 3)
+```
+
+
+
+
 
 
 
