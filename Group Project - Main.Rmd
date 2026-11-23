@@ -1,0 +1,27 @@
+---
+title: "FML Group Project"
+author: "Joseph Demore"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# short block to check if the packages are installed; will download and install any that are not.4
+# ex: c("lpsolveapi", "mlbench")
+
+packages <- c()
+
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg, repos = "https://cloud.r-project.org")
+  library(pkg, character.only = TRUE)
+}
+```
+
+```{r}
+
+```
+
