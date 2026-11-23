@@ -9,6 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+### Add packages here { in the combine function, as strings }
+
 ```{r}
 # short block to check if the packages are installed; will download and install any that are not.4
 # ex: c("lpsolveapi", "mlbench")
@@ -34,3 +36,68 @@ colnames(hotels)
 dim(hotels) 
 ```
 
+# =============================================================================
+
+# GROUP WORK & PREPROCESSING
+```
+This will be combined during our group calls
+Please do  not edit individually
+```
+```{r}
+
+```
+
+
+
+
+# =============================================================================
+
+```
+Ana's Personal Work and Testing Grounds
+```
+```{r}
+
+```
+
+
+
+
+# =============================================================================
+
+```
+Christine's Personal Work and Testing Grounds
+```
+```{r}
+
+```
+
+
+
+
+# =============================================================================
+
+```
+Joe's Personal Work and Testing Grounds
+```
+```{r}
+
+```
+
+
+
+
+# =============================================================================
+
+```
+This block is for our final results / tests and checks
+Following the work we have done in our individual space.
+This will be edited during group calls as well.
+```
+```{r}
+
+```
+
+
+
+
+# =============================================================================
