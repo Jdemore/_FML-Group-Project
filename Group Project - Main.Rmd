@@ -1,6 +1,6 @@
 ---
 title: "FML Group Project"
-author: "Joseph Demore"
+author: "Joseph Demore, Ana Sarmiento, Christine Donovan"
 date: "`r Sys.Date()`"
 output: html_document
 ---
@@ -24,14 +24,7 @@ for (pkg in packages) {
 ```
 
 ```{r}
-resort <- read.csv("Dataset/H1.csv", na.strings = "NULL", strip.white = TRUE)
-city   <- read.csv("Dataset/H2.csv", na.strings = "NULL", strip.white = TRUE)
-
-resort$Hotel <- "Resort"
-city$Hotel   <- "City"
-
-hotels <- rbind(resort, city)
-
+hotels <- read.csv("Dataset/hotels.csv", na.strings = "NULL", strip.white = TRUE)
 colnames(hotels)
 dim(hotels) 
 ```
@@ -66,19 +59,16 @@ Ana's Personal Work and Testing Grounds
 
 ```
 Christine's Personal Work and Testing Grounds
----
-title: "FML GROUP HOTEL BOOKING EXPLORATION"
-author: "Christine Donovan"
-date: "`r Sys.Date()`"
-output: html_document
----
+```
+
 ## Data Source and Description
 
+```
 **Dataset:** Hotel Booking Demand
 
 **Description:** Booking records from two hotels in Portugal, a resort hotel
 in the Algarve and a city hotel in Lisbon, for arrivals between July 1, 2015
-and August 31, 2017. Each row is one booking. The file has 119,390 rows and
+and August 31, 2017. Each row is one booking. The file has 119,390 rows and 
 32 columns, with details such as lead time, length of stay, number of guests,
 market segment, deposit type and average daily rate. The target variable is
 `is_canceled` (1 = the booking was canceled, 0 = it was not).
@@ -97,16 +87,6 @@ Accessed November 13, 2026.
 **How this copy was prepared:** TidyTuesday combined the article's two hotel
 files into one, standardized the column names and added the `hotel` column.
 Our own cleaning steps are documented in the sections below.
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-## Step 1. Load dataset Hotels.csv and evaluate
-```{r}
-hotels <- read.csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv")
-dim(hotels)
-str(hotels)
-table(hotels$is_canceled)
 ```
 
 ## Step 2. Defining question & remove leakage
