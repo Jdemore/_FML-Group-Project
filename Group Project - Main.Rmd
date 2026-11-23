@@ -22,6 +22,15 @@ for (pkg in packages) {
 ```
 
 ```{r}
+resort <- read.csv("Dataset/H1.csv", na.strings = "NULL", strip.white = TRUE)
+city   <- read.csv("Dataset/H2.csv", na.strings = "NULL", strip.white = TRUE)
 
+resort$Hotel <- "Resort"
+city$Hotel   <- "City"
+
+hotels <- rbind(resort, city)
+
+colnames(hotels)
+dim(hotels) 
 ```
 
