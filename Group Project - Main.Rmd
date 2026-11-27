@@ -376,7 +376,21 @@ round(prop.table(table(valid$is_canceled)), 3)
 round(prop.table(table(test$is_canceled)), 3)
 ```
 
+## Step 6a: Turn categories into numbers
+```{r}
+## Step 6a: Turn categories into 0/1 columns
+library(class)
 
+x_train <- model.matrix(is_canceled ~ ., data = train)[, -1]
+x_valid <- model.matrix(is_canceled ~ ., data = valid)[, -1]
+x_test  <- model.matrix(is_canceled ~ ., data = test)[, -1]
+
+y_train <- train$is_canceled
+y_valid <- valid$is_canceled
+y_test  <- test$is_canceled
+
+dim(x_train)
+```
 
 
 
