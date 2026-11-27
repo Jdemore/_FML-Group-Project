@@ -445,8 +445,23 @@ results
 ```
 **Choosing k:** Accuracy was nearly flat (79.7%–80.5%), but the share of cancellations caught fell as k increased. We chose k = 3: it had the highest validation accuracy (80.5%) and caught 70% of cancellations, without the instability of k = 1.
 
+## Step 6e: Final test, run once
 
+```{r}
+## Step 6e: Final k-NN evaluation on the test set (k = 3)
+set.seed(123)
+pred_test <- knn(train = x_train_s, test = x_test_s, cl = y_train, k = 3)
 
+table(Predicted = pred_test, Actual = y_test)
+
+accuracy <- mean(pred_test == y_test)
+caught   <- mean(pred_test[y_test == "Canceled"] == "Canceled")
+precision <- mean(y_test[pred_test == "Canceled"] == "Canceled")
+
+round(c(accuracy = accuracy, caught = caught, precision = precision), 3)
+```
+
+**Test results (k = 3):** On the test set, k-NN reached 80.1% accuracy, compared with the 62.6% benchmark of always predicting "Stayed." It caught 69.4% of cancellations, and 75.6% of the bookings it flagged as canceled did cancel. These results closely match validation (80.5% accuracy, 70.0% caught), showing the model performs consistently on unseen bookings.
 
 
 # =============================================================================
