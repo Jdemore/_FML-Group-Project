@@ -102,7 +102,8 @@ The 44,224 are 43,017 cancellations plus 1,207 no-shows, so the target means “
 hotels_clean <- subset(hotels, select = -c(reservation_status,
                                            reservation_status_date,
                                            assigned_room_type,
-                                           booking_changes))
+                                           booking_changes,
+                                           required_car_parking_spaces))
 dim(hotels_clean)
 ```
 ### Leakage columns removed
@@ -113,6 +114,7 @@ dim(hotels_clean)
 | `reservation_status_date` | Date the final status was set              | Exists only after the outcome has happened        |
 | `assigned_room_type`      | Room type actually given to the guest      | Set at or near check-in, after the booking is made |
 | `booking_changes`         | Changes/amendments made to the booking     | Counts changes made after booking; not known at the time of booking |
+|`required_car_parking_spaces`| Requested Parking Spaces.                | Determined at check-in                            |
 
 
 
