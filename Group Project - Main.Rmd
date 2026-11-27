@@ -424,6 +424,27 @@ mean(pred_5 == y_valid)
 ```
 **Result (k = 5):** Accuracy was 80.3%, well above the 63% benchmark of always predicting "Stayed." The model caught 5,937 of 8,803 cancellations (67%), missed 2,866, and raised 1,828 false alarms. The run took about one minute, so testing several values of k is practical.
 
+## Step 6d: Compare several values of k
+
+```{r}
+## Step 6d: Try several k values on the validation set
+k_values <- c(1, 3, 5, 7, 9, 11, 15, 21)
+results <- data.frame(k = k_values, accuracy = NA, caught = NA)
+
+set.seed(123)
+for (i in seq_along(k_values)) {
+  pred <- knn(train = x_train_s, test = x_valid_s, cl = y_train, k = k_values[i])
+  results$accuracy[i] <- mean(pred == y_valid)
+  results$caught[i]   <- mean(pred[y_valid == "Canceled"] == "Canceled")
+  cat("Finished k =", k_values[i], "\n")
+}
+
+results$accuracy <- round(results$accuracy, 3)
+results$caught   <- round(results$caught, 3)
+results
+```
+**Choosing k:** Accuracy was nearly flat (79.7%–80.5%), but the share of cancellations caught fell as k increased. We chose k = 3: it had the highest validation accuracy (80.5%) and caught 70% of cancellations, without the instability of k = 1.
+
 
 
 
