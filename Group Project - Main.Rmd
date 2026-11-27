@@ -392,7 +392,22 @@ y_test  <- test$is_canceled
 dim(x_train)
 ```
 
+## Step 6b: Put every column on the same scale
+```{r}
+## Step 6b: Scale using training means and standard deviations
+means <- apply(x_train, 2, mean)
+sds   <- apply(x_train, 2, sd)
 
+keep <- sds > 0   # drop any column with no variation in training
+
+x_train_s <- scale(x_train[, keep], center = means[keep], scale = sds[keep])
+x_valid_s <- scale(x_valid[, keep], center = means[keep], scale = sds[keep])
+x_test_s  <- scale(x_test[, keep],  center = means[keep], scale = sds[keep])
+
+sum(!keep)
+dim(x_train_s)
+round(mean(x_train_s[, "lead_time"]), 2); round(sd(x_train_s[, "lead_time"]), 2)
+```
 
 
 
