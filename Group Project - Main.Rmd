@@ -258,7 +258,7 @@ table(hotels_clean$market_segment, hotels_clean$distribution_channel)
 | `arrival_date_day_of_month` | No clear reason for day of month to affect cancellation                 |
 
 
-### Predictors kept (22 columns)
+### Predictors kept (21 columns)
 
 | #  | Column                           | Type     | What it holds                                         |
 |----|----------------------------------|----------|-------------------------------------------------------|
@@ -280,10 +280,9 @@ table(hotels_clean$market_segment, hotels_clean$distribution_channel)
 | 16 | `previous_bookings_not_canceled` | Number   | Earlier bookings this guest did not cancel            |
 | 17 | `days_in_waiting_list`           | Number   | Days on the waiting list before confirmation          |
 | 18 | `adr`                            | Number   | Average daily rate, in euros                          |
-| 19 | `required_car_parking_spaces`    | Number   | Parking spaces requested                              |
-| 20 | `total_of_special_requests`      | Number   | Number of special requests                            |
-| 21 | `used_agent`                     | 0/1      | 1 if booked through a travel agent (created in Step 3b) |
-| 22 | `used_company`                   | 0/1      | 1 if booked through a company (created in Step 3b)    |
+| 19 | `total_of_special_requests`      | Number   | Number of special requests                            |
+| 20 | `used_agent`                     | 0/1      | 1 if booked through a travel agent (created in Step 3b) |
+| 21 | `used_company`                   | 0/1      | 1 if booked through a company (created in Step 3b)    |
 
 Target: `is_canceled` (1 = the guest did not stay, 0 = the guest stayed).
 
