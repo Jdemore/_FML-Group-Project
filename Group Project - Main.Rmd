@@ -24,7 +24,7 @@ for (pkg in packages) {
 ```
 
 ```{r}
-hotels <- read.csv("Dataset/hotels.csv", na.strings = "NULL", strip.white = TRUE)
+hotels <- read.csv("Dataset/hotels.csv")
 colnames(hotels)
 dim(hotels) 
 ```
@@ -51,7 +51,6 @@ Ana's Personal Work and Testing Grounds
 ```{r}
 
 ```
-
 
 
 
