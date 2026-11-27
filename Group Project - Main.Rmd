@@ -409,6 +409,22 @@ dim(x_train_s)
 round(mean(x_train_s[, "lead_time"]), 2); round(sd(x_train_s[, "lead_time"]), 2)
 ```
 
+## Step 6c: First run, one k
+
+```{r}
+## Step 6c: First k-NN run (k = 5), timed
+set.seed(123)
+timing <- system.time(
+  pred_5 <- knn(train = x_train_s, test = x_valid_s, cl = y_train, k = 5)
+)
+timing["elapsed"]
+
+table(Predicted = pred_5, Actual = y_valid)
+mean(pred_5 == y_valid)
+```
+**Result (k = 5):** Accuracy was 80.3%, well above the 63% benchmark of always predicting "Stayed." The model caught 5,937 of 8,803 cancellations (67%), missed 2,866, and raised 1,828 false alarms. The run took about one minute, so testing several values of k is practical.
+
+
 
 
 
