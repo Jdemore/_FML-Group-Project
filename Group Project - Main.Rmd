@@ -72,7 +72,7 @@ and August 31, 2017. Each row is one booking. The file has 119,390 rows and
 market segment, deposit type and average daily rate. The target variable is
 `is_canceled` (1 = the booking was canceled, 0 = it was not).
 
-**Progject Goal:** Using only what is known when a booking is made, can we predict whether the guest will fail to stay, either by cancelling or by not showing up?
+**Project Goal:** Using only what is known when a booking is made, can we predict whether the guest will fail to stay, either by cancelling or by not showing up?
 
 **Original source:** Antonio, N., de Almeida, A., & Nunes, L. (2019). Hotel
 booking demand datasets. *Data in Brief, 22*, 41–49.
