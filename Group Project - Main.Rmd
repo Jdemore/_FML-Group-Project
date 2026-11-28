@@ -37,7 +37,70 @@ This will be combined during our group calls
 Please do  not edit individually
 ```
 ```{r}
+# Remove leakage columns (not known at the time of booking)
+hotels_clean <- subset(hotels, select = -c(reservation_status,
+                                           reservation_status_date,
+                                           assigned_room_type,
+                                           booking_changes,
+                                           required_car_parking_spaces))
 
+# Fix missing values
+hotels_clean$children[is.na(hotels_clean$children)] <- 0
+hotels_clean$country[hotels_clean$country == "NULL"] <- "Unknown"
+
+# agent and company: turn into yes/no flags, then drop the originals
+hotels_clean$used_agent   <- ifelse(hotels_clean$agent == "NULL", 0, 1)
+hotels_clean$used_company <- ifelse(hotels_clean$company == "NULL", 0, 1)
+hotels_clean <- subset(hotels_clean, select = -c(agent, company))
+
+# Remove records that make no sense
+drop <- hotels_clean$adr < 0 |
+        hotels_clean$adr > 1000 |
+        (hotels_clean$adults + hotels_clean$children + hotels_clean$babies) == 0 |
+        hotels_clean$adults >= 20 |
+        hotels_clean$babies >= 9
+hotels_clean <- hotels_clean[!drop, ]
+
+# Remove predictors we are not using
+hotels_model <- subset(hotels_clean, select = -c(country, distribution_channel,
+                                                 arrival_date_year,
+                                                 arrival_date_week_number,
+                                                 arrival_date_day_of_month))
+
+# Convert category columns and the target to factors
+cat_cols <- c("hotel", "arrival_date_month", "meal", "market_segment",
+              "reserved_room_type", "deposit_type", "customer_type")
+
+hotels_model[cat_cols] <- lapply(hotels_model[cat_cols], factor)
+
+hotels_model$arrival_date_month <- factor(hotels_model$arrival_date_month,
+                                          levels = month.name)
+
+hotels_model$is_canceled <- factor(hotels_clean$is_canceled,
+                                   levels = c(0, 1),
+                                   labels = c("Stayed", "Canceled"))
+```
+
+```{r}
+# Split the data: 60% train, 20% validation, 20% test
+set.seed(123)
+n <- nrow(hotels_model)
+idx <- sample(n)
+
+n_train <- round(0.6 * n)
+n_valid <- round(0.2 * n)
+
+train <- hotels_model[idx[1:n_train], ]
+valid <- hotels_model[idx[(n_train + 1):(n_train + n_valid)], ]
+test  <- hotels_model[idx[(n_train + n_valid + 1):n], ]
+```
+
+```{r}
+# Personal copies of the cleaned data and the splits, one list per person
+# Access with $, e.g. christine$hotels, christine$train
+ana       <- list(hotels = hotels_model, train = train, valid = valid, test = test)
+christine <- list(hotels = hotels_model, train = train, valid = valid, test = test)
+joe       <- list(hotels = hotels_model, train = train, valid = valid, test = test)
 ```
 
 
@@ -60,7 +123,50 @@ Ana's Personal Work and Testing Grounds
 Christine's Personal Work and Testing Grounds
 ```
 
-## Data Source and Description
+```{r}
+
+```
+
+
+
+
+# =============================================================================
+
+```
+Joe's Personal Work and Testing Grounds
+```
+```{r}
+
+```
+
+
+
+
+# =============================================================================
+
+```
+This block is for our final results / tests and checks
+Following the work we have done in our individual space.
+This will be edited during group calls as well.
+```
+```{r}
+
+```
+
+
+
+
+# =============================================================================
+
+# DEPRECATED
+## DATA CLEANING
+
+```
+Christine's original data cleaning work, kept for notes.
+The working version of this code is in the group section at the top.
+```
+
+### Data Source and Description
 
 ```
 **Dataset:** Hotel Booking Demand
@@ -88,7 +194,7 @@ files into one, standardized the column names and added the `hotel` column.
 Our own cleaning steps are documented in the sections below.
 ```
 
-## Step 2. Defining question & remove leakage
+### Step 2. Defining question & remove leakage
 
 At the moment a booking is made, can we predict whether it will be cancelled?
 The two parts of it:  “At the moment a booking is made” sets the time of the prediction. It is the reason the columns filled in later have to be removed: the final status, its date, the assigned room and the count of booking changes. “Whether it will be cancelled” is the target, "is_canceled."
@@ -122,18 +228,18 @@ dim(hotels_clean)
 table(hotels$deposit_type, hotels$reservation_status)
 ```
 
-## Test 1: are no-deposit bookings made at the last minute?
+### Test 1: are no-deposit bookings made at the last minute?
 ```{r}
 tapply(hotels$lead_time, hotels$deposit_type, summary)
 ```
-## Test 2: are non-refundable bookings made online?
+### Test 2: are non-refundable bookings made online?
 ```{r}
 table(hotels$deposit_type, hotels$market_segment)
 ```
 
 
 
-## Step 3a:  Count missing items: 
+### Step 3a:  Count missing items: 
 
 The first counts true missing values in each column, and the second counts cells holding the text "NULL".
 
@@ -141,14 +247,14 @@ The first counts true missing values in each column, and the second counts cells
 colSums(is.na(hotels_clean))
 colSums(hotels_clean == "NULL", na.rm = TRUE)
 ```
-## Step 3b: Fix the missing values
+### Step 3b: Fix the missing values
 ```{r}
 length(unique(hotels_clean$agent))
 length(unique(hotels_clean$company))
 ```
 This counts the distinct values in each column. Found: 334 and 353 distinct values. Neither model can make good use of a category with hundreds of levels: k-NN would need hundreds of extra columns, and naive Bayes would have very few bookings per code to learn from..
 
-## The Fix
+### The Fix
 ```{r}
 # 1. children: replace the 4 missing values with 0
 hotels_clean$children[is.na(hotels_clean$children)] <- 0
@@ -176,7 +282,7 @@ dim(hotels_clean)
 ```{r}
 names(hotels_clean)
 ```
-## 3c: Find records that make no sense
+### 3c: Find records that make no sense
 ```{r}
 summary(hotels_clean[, c("adults", "children", "babies", "adr",
                          "stays_in_weekend_nights", "stays_in_week_nights",
@@ -233,7 +339,7 @@ sum(drop)
 hotels_clean <- hotels_clean[!drop, ]
 dim(hotels_clean)
 ```
-## Step 4a: Take stock of the text columns 
+### Step 4a: Take stock of the text columns 
 ```{r}
 text_cols <- sapply(hotels_clean, is.character)
 sapply(hotels_clean[text_cols], function(x) length(unique(x)))
@@ -242,7 +348,7 @@ sapply(hotels_clean[text_cols], function(x) length(unique(x)))
 **Line 1** tests every column and marks TRUE for the ones stored as text. sapply() applies a function to each column in turn.
 **Line 2** takes only the text columns and, for each one, counts its distinct values. The function(x) length(unique(x)) part is a small function written on the spot: for a column x, count the unique values.
 
-## Step 4b: Choose the predictors
+### Step 4b: Choose the predictors
 
 ```{r}
 table(hotels_clean$market_segment, hotels_clean$distribution_channel)
@@ -288,7 +394,7 @@ table(hotels_clean$market_segment, hotels_clean$distribution_channel)
 Target: `is_canceled` (1 = the guest did not stay, 0 = the guest stayed).
 
 
-## Step 4b: Remove the 5 columns
+### Step 4b: Remove the 5 columns
 Check
 ```{r}
 table(hotels_clean$market_segment, hotels_clean$distribution_channel)
@@ -312,7 +418,7 @@ names(hotels_model)
 
 **names()** lists the remaining columns so you can confirm the right ones are gone.
 
-## Step 4c: Tell R which columns are categories
+### Step 4c: Tell R which columns are categories
 
 **The problem** R currently stores seven category columns as plain text, and the target as the numbers 0 and 1. The models need to know these are categories. R’s name for a category column is a factor.
 
@@ -345,7 +451,7 @@ table(hotels_model$is_canceled)
 ### The benchmark after cleaning
 75,008 of 119,194 is 62.9%, so the naive rule is still 63%. Removing 196 rows did not shift the balance.
 
-## Step 5: Split the data
+### Step 5: Split the data
 
 ### Why split into three sets
 
@@ -356,7 +462,7 @@ table(hotels_model$is_canceled)
 | Test       | 20%   | The final comparison of the two models, used once |
 
 
-## Step 5a: Split Data Code
+### Step 5a: Split Data Code
 
 ```{r}
 set.seed(123)
@@ -375,37 +481,6 @@ round(prop.table(table(train$is_canceled)), 3)
 round(prop.table(table(valid$is_canceled)), 3)
 round(prop.table(table(test$is_canceled)), 3)
 ```
-
-
-
-
-
-
-
-
-# =============================================================================
-
-```
-Joe's Personal Work and Testing Grounds
-```
-```{r}
-
-```
-
-
-
-
-# =============================================================================
-
-```
-This block is for our final results / tests and checks
-Following the work we have done in our individual space.
-This will be edited during group calls as well.
-```
-```{r}
-
-```
-
 
 
 
